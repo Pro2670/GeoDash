@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Geo-Dash Clone</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #222; font-family: sans-serif; }
+        #gameCanvas { display: block; background: #0072ff; border-bottom: 5px solid #fff; }
+        #ui { position: absolute; top: 10px; left: 10px; color: white; font-size: 20px; }
+        .instructions { position: absolute; bottom: 10px; width: 100%; text-align: center; color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">Score: <span id="score">0</span></div>
+    <div class="instructions">Press **SPACE** or **Click** to Jump</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+
+        canvas.width = window.innerWidth;
+        canvas.height = 400;
+
+        // Game Constants
+        let gravity = 0.8;
+        let score = 0;
+        let gameActive = true;
+
+        // Player Object
+        const player = {
+            x: 100,
+            y: 300,
+            size: 40,
+            dy: 0,
+            jumpForce: -15,
+            color: "#ff00e1", // Change this for "Character Customization"
+            rotate: 0,
+            grounded: false
+        };
+
+        // Obstacles
+        const obstacles = [];
+        function spawnObstacle() {
+            if(!gameActive) return;
+            obstacles.push({
+                x: canvas.width,
+                y: 320,
+                width: 40,
+                height: 40,
+                speed: 6 + (score / 5) // Speed increases as you play
+            });
+            setTimeout(spawnObstacle, Math.random() * 2000 + 1000);
+        }
+
+        function draw() {
+            if (!gameActive) return;
+
+            // Clear Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Apply Gravity
+            player.dy += gravity;
+            player.y += player.dy;
+
+            // Floor Collision
+            if (player.y + player.size > 360) {
+                player.y = 360 - player.size;
+                player.dy = 0;
+                player.grounded = true;
+                // Rotate back to flat on ground
+                player.rotate = Math.round(player.rotate / 90) * 90;
+            } else {
+                player.grounded = false;
+                player.rotate += 5; // Spin while jumping
+            }
+
+            // Draw Player
+            ctx.save();
+            ctx.translate(player.x + player.size/2, player.y + player.size/2);
+            ctx.rotate(player.rotate * Math.PI / 180);
+            ctx.fillStyle = player.color;
+            ctx.fillRect(-player.size/2, -player.size/2, player.size, player.size);
+            ctx.strokeStyle = "white";
+            ctx.strokeRect(-player.size/2, -player.size/2, player.size, player.size);
+            ctx.restore();
+
+            // Draw Obstacles
+            obstacles.forEach((obs, index) => {
+                obs.x -= obs.speed;
+                ctx.fillStyle = "#ff3333";
+                // Drawing a triangle obstacle
+                ctx.beginPath();
+                ctx.moveTo(obs.x, 360);
+                ctx.lineTo(obs.x + 20, 320);
+                ctx.lineTo(obs.x + 40, 360);
+                ctx.fill();
+
+                // Collision Detection
+                if (
+                    player.x < obs.x + 30 &&
+                    player.x + player.size > obs.x + 10 &&
+                    player.y + player.size > 330
+                ) {
+                    gameOver();
+                }
+
+                // Remove off-screen obstacles & increase score
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(index, 1);
+                    score++;
+                    scoreElement.innerText = score;
+                }
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        function jump() {
+            if (player.grounded) {
+                player.dy = player.jumpForce;
+            }
+        }
+
+        function gameOver() {
+            gameActive = false;
+            alert("Game Over! Score: " + score);
+            location.reload();
+        }
+
+        // Controls
+        window.addEventListener("keydown", (e) => { if(e.code === "Space") jump(); });
+        window.addEventListener("mousedown", jump);
+
+        spawnObstacle();
+        draw();
+    </script>
+</body>
+</html>
