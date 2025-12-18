@@ -2,601 +2,170 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Geo-Dash Ultimate (FIXED)</title>
+<title>Geo-Dash Fixed Physics</title>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Teko:wght@500;700&display=swap');
-    body { margin: 0; background: #111; overflow: hidden; font-family: 'Teko', sans-serif; user-select: none; }
+    body { margin: 0; background: #000; overflow: hidden; font-family: 'Teko', sans-serif; }
     canvas { display: block; width: 100vw; height: 100vh; }
-    
-    /* UI STYLES */
-    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    .panel { pointer-events: auto; background: rgba(0,0,0,0.95); border: 3px solid #00f0ff; padding: 20px; text-align: center; border-radius: 12px; max-width: 600px; width: 90%; box-shadow: 0 0 30px rgba(0, 240, 255, 0.3); max-height: 85vh; overflow-y: auto; }
-    .hidden { display: none !important; }
-    
-    h1 { color: #fff; font-size: 60px; margin: 0; text-shadow: 4px 4px #000; -webkit-text-stroke: 1px #00f0ff; line-height: 1; }
-    h2 { color: #00f0ff; margin: 15px 0 5px 0; font-size: 30px; letter-spacing: 2px; }
-    
-    button {
-        background: linear-gradient(180deg, #00f0ff, #0099ff);
-        border: 2px solid #fff; color: #000; font-family: 'Teko', sans-serif;
-        font-size: 24px; padding: 12px 25px; margin: 8px; cursor: pointer;
-        font-weight: bold; transform: skew(-10deg); transition: 0.1s;
-        box-shadow: 3px 3px 0px rgba(0,0,0,0.5);
-    }
-    button:hover { transform: skew(-10deg) scale(1.05); filter: brightness(1.2); }
-    button:active { transform: skew(-10deg) scale(0.95); }
-    button.red { background: linear-gradient(180deg, #ff5555, #aa0000); }
-    button.green { background: linear-gradient(180deg, #55ff55, #00aa00); }
-
-    .level-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.1); margin: 5px 0; padding: 5px; border-radius: 5px; }
-    .level-btn { width: 100%; text-align: left; margin: 0; transform: none; box-shadow: none; border: none; background: transparent; color: white; text-shadow: 1px 1px 0 #000; }
-    .level-btn:hover { transform: translateX(10px); background: transparent; color: #00f0ff; }
-
-    /* EDITOR STYLES */
-    #editor-ui { position: absolute; bottom: 0; left: 0; width: 100%; background: #1a1a1a; padding: 15px; display: flex; gap: 15px; pointer-events: auto; border-top: 3px solid #00f0ff; box-sizing: border-box; align-items: center; }
-    .tile-selector { width: 50px; height: 50px; border: 2px solid #555; cursor: pointer; display: flex; justify-content: center; align-items: center; color: white; font-size: 20px; background: #333; transition: 0.2s; }
-    .tile-selector:hover { border-color: #fff; }
-    .tile-selector.active { border-color: #00f0ff; background: #004455; box-shadow: 0 0 10px #00f0ff; }
+    #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; justify-content: center; align-items: center; }
+    .menu { pointer-events: auto; background: rgba(0,0,0,0.9); border: 4px solid #0ff; padding: 30px; text-align: center; color: white; border-radius: 15px; }
+    .hidden { display: none; }
+    button { background: #0ff; border: none; padding: 10px 20px; font-family: 'Teko'; font-size: 24px; cursor: pointer; margin: 10px; }
 </style>
 </head>
 <body>
 
 <canvas id="gameCanvas"></canvas>
-
-<div id="ui-layer">
-    <div id="main-menu" class="panel">
-        <h1>GEO-DASH v2</h1>
-        <div style="margin: 20px; display:flex; justify-content:center; align-items:center; gap:20px;">
-            <div id="icon-preview" style="width:60px; height:60px; background:#00f0ff; border:3px solid white; box-shadow: 0 0 15px currentColor;"></div>
-            <button onclick="changeColor()">Change Color</button>
-        </div>
-        
-        <div style="text-align: left; max-height: 300px; overflow-y: auto; padding-right: 10px;">
-            <h2>CAMPAIGN</h2>
-            <div id="campaign-list"></div>
-            
-            <h2>MY LEVELS</h2>
-            <button class="green" onclick="openEditor()" style="width:100%; transform:none; margin:0 0 10px 0;">+ CREATE NEW LEVEL</button>
-            <div id="custom-list"></div>
-        </div>
+<div id="ui">
+    <div id="main-menu" class="menu">
+        <h1>GEO-DASH</h1>
+        <button onclick="startLevel(0)">PLAY LEVEL 1</button>
+        <button onclick="startLevel(1)">PLAY LEVEL 2</button>
     </div>
-
-    <div id="game-over" class="panel hidden">
-        <h1 style="color:#ff3333; -webkit-text-stroke:1px #ff3333;">CRASHED!</h1>
-        <h2 id="percent-display" style="color:white; font-size: 40px;">0%</h2>
-        <div style="margin-top: 20px;">
-            <button class="green" onclick="restartLevel()">Retry</button>
-            <button class="red" onclick="showMenu()">Menu</button>
-        </div>
+    <div id="death-screen" class="menu hidden">
+        <h1 style="color:red">CRASHED</h1>
+        <button onclick="restart()">RETRY</button>
     </div>
-    
-    <div id="win-screen" class="panel hidden">
-        <h1 style="color:#55ff55; -webkit-text-stroke:1px #55ff55;">LEVEL COMPLETE!</h1>
-        <button class="green" onclick="showMenu()">Continue</button>
-    </div>
-
-    <div id="editor-overlay" class="panel hidden" style="background:none; border:none; box-shadow:none; pointer-events:none; top: 20px; position: absolute;">
-        <h1 style="font-size: 40px; text-shadow: 0 0 10px black;">EDITOR MODE</h1>
-    </div>
-</div>
-
-<div id="editor-ui" class="hidden">
-    <div class="tile-selector active" onclick="setEditTool(1)">BLK</div>
-    <div class="tile-selector" onclick="setEditTool(2)" style="color:#ff5555">SPK</div>
-    <div class="tile-selector" onclick="setEditTool(3)" style="color:pink">SHIP</div>
-    <div class="tile-selector" onclick="setEditTool(4)" style="color:lime">CUBE</div>
-    <div class="tile-selector" onclick="setEditTool(0)" style="color:#888">ERA</div>
-    <div style="flex-grow:1;"></div>
-    <button onclick="saveCustomLevel()" style="font-size: 20px; padding: 5px 20px; transform: none;">SAVE</button>
-    <button class="red" onclick="showMenu()" style="font-size: 20px; padding: 5px 20px; transform: none;">EXIT</button>
 </div>
 
 <script>
-/** GEO-DASH ENGINE FIXED **/
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-let TILE_SIZE = 60;
-let SCREEN_W, SCREEN_H;
+const TILE = 60;
 
-// --- STATE ---
-let gameState = "MENU"; 
-let currentLevelData = "";
-let frame = 0;
+let gameState = "MENU";
+let player = { x: 0, y: 0, w: 40, h: 40, dx: 9, dy: 0, angle: 0, grounded: false };
 let cameraX = 0;
-let scorePercent = 0;
-let godMode = false; // INVINCIBILITY TOGGLE
+let map = [];
 
-// --- AUDIO ---
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playTone(freq, type, duration) {
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime + duration);
-}
-
-// --- PLAYER ---
-const player = {
-    x: 0, y: 0, w: 40, h: 40,
-    dx: 9, dy: 0,
-    angle: 0,
-    mode: 'cube',
-    grounded: false,
-    color: '#00f0ff',
-    trail: []
-};
-
-// --- LEVELS ---
-const campaignLevels = [
-    {name: "1. Stereo Start", data: "..........1............................................................11...2..11......................."},
-    {name: "2. Back On Track", data: "..........1...........111.......111.......111..................2.......11...2..11.......2.......111..."},
-    {name: "3. Polargeist", data: "..........3...................1.....................1......1..............1..............111111111....4..."},
-    {name: "4. Dry Out", data: "..........1.......2.2.2.......111.......2.......111...2...111.......3.........1111...................."},
-    {name: "5. Base After Base", data: "..........3.......................111..................111..................222......................."},
-    {name: "6. Can't Let Go", data: "..........1...2...1...2...1...111111...2...2...1111.......11.......2.2.2.11111........................"},
-    {name: "7. Jumper", data: "..........111111111111111111...11111...11111...11111...11111.........................................."},
-    {name: "8. Time Machine", data: "..........1.......3..............1111..............4.......111.......3..............1111.............."},
-    {name: "9. Cycles", data: "..........1...2...2...2...111...2...2...2...111...222...111...222...11111111.........................."},
-    {name: "10. xStep", data: "..........1...2...3..............1111.......2.......4.......111...2...3..............111111...2...2..."}
-];
-
-// --- INIT ---
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    SCREEN_W = canvas.width;
-    SCREEN_H = canvas.height;
-    // Adjust tile size slightly for smaller screens
-    if(SCREEN_H < 600) TILE_SIZE = 50;
-    else TILE_SIZE = 60;
-}
-window.addEventListener('resize', resize);
-resize();
-
-// --- MENU ---
-function renderMenu() {
-    const list = document.getElementById('campaign-list');
-    list.innerHTML = "";
-    campaignLevels.forEach((lvl, i) => {
-        list.innerHTML += `<div class="level-row"><button class="level-btn" onclick="loadLevel(${i})">${lvl.name}</button></div>`;
-    });
-
-    const customList = document.getElementById('custom-list');
-    customList.innerHTML = "";
-    let saved = JSON.parse(localStorage.getItem('geoDashLevels') || "[]");
-    if(saved.length === 0) customList.innerHTML = "<div style='color:#777; font-style:italic;'>No custom levels yet...</div>";
-    saved.forEach((lvl, i) => {
-        customList.innerHTML += `<div class="level-row">
-            <button class="level-btn" onclick="playCustom(${i})">${lvl.name}</button>
-            <button class="red" onclick="deleteCustom(${i})" style="width:40px; padding:5px; margin:0; transform:none;">X</button>
-        </div>`;
-    });
-}
-
-let colorIdx = 0;
-const colors = ['#00f0ff', '#ff0055', '#55ff55', '#ffff00', '#aa00ff', '#ffffff'];
-function changeColor() {
-    colorIdx = (colorIdx + 1) % colors.length;
-    player.color = colors[colorIdx];
-    document.getElementById('icon-preview').style.backgroundColor = player.color;
-    document.getElementById('icon-preview').style.boxShadow = `0 0 15px ${player.color}`;
-}
-
-// --- MAP PARSING ---
-let mapObjects = [];
-let levelEndX = 0;
-
-function parseMap(dataString) {
-    mapObjects = [];
-    
-    // Always create a safe starting floor (first 10 blocks)
-    for(let i=-5; i<15; i++) {
-        mapObjects.push({x: i*TILE_SIZE, y: SCREEN_H - TILE_SIZE, type: 1, w: TILE_SIZE, h: TILE_SIZE});
-    }
-
-    // Level Data
-    let chars = dataString.split('');
-    chars.forEach((c, i) => {
-        let x = (i + 10) * TILE_SIZE; // Shift map by 10 blocks to allow run-up
-        let y = SCREEN_H - (TILE_SIZE * 2); 
-        
-        // Floor under every block for the whole length
-        mapObjects.push({x: x, y: SCREEN_H - TILE_SIZE, type: 1, w: TILE_SIZE, h: TILE_SIZE});
-
-        if(c === '1') { // Block
-            mapObjects.push({x:x, y:y, type:1, w:TILE_SIZE, h:TILE_SIZE});
-        } else if (c === '2') { // Spike
-            mapObjects.push({x:x + 15, y:y + 30, type:2, w:30, h:30}); // Smaller hitbox
-        } else if (c === '3') { // Ship
-            mapObjects.push({x:x, y:y, type:3, w:TILE_SIZE/2, h:TILE_SIZE*2});
-        } else if (c === '4') { // Cube
-            mapObjects.push({x:x, y:y, type:4, w:TILE_SIZE/2, h:TILE_SIZE*2});
-        }
-    });
-    levelEndX = (chars.length + 10) * TILE_SIZE;
-}
-
-// --- GAME LOGIC ---
-function loadLevel(idx) { startSession(campaignLevels[idx].data); }
-function playCustom(idx) { 
-    let saved = JSON.parse(localStorage.getItem('geoDashLevels'));
-    startSession(saved[idx].data); 
-}
-
-function startSession(data) {
-    resize(); // Force screen calc
-    currentLevelData = data;
-    parseMap(data);
-    
-    // RESET PLAYER TO SAFE ZONE
-    player.x = 0;
-    player.y = SCREEN_H - (TILE_SIZE * 2) - 100; // High in air
-    player.dy = 0;
-    player.mode = 'cube';
-    player.angle = 0;
-    player.trail = [];
-    cameraX = 0;
-    frame = 0;
-    
-    // ENABLE GOD MODE FOR 1 SECOND (Prevents instant crash)
-    godMode = true;
-    setTimeout(() => { godMode = false; }, 1000);
-
-    gameState = "PLAYING";
-    document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
-    document.getElementById('ui-layer').style.pointerEvents = "none";
-    loop();
-}
-
+// --- PHYSICS ENGINE (THE FIX) ---
 function update() {
-    if(gameState !== "PLAYING") return;
+    if (gameState !== "PLAYING") return;
 
-    // Move
     player.x += player.dx;
-    cameraX = player.x - 250;
-
-    // Physics
-    if(player.mode === 'cube') {
-        player.dy += 1.6; // Gravity
-        if(player.grounded) {
-            let snap = Math.round(player.angle/90)*90;
-            player.angle += (snap - player.angle)*0.2;
-        } else {
-            player.angle += 6;
-        }
-    } else { // Ship
-        player.dy += 0.5;
-        if(mouseDown) player.dy -= 1.1;
-        // Cap speed
-        if(player.dy > 12) player.dy = 12;
-        if(player.dy < -12) player.dy = -12;
-        player.angle = player.dy * 2.5;
-    }
-    
+    player.dy += 1.6; // Gravity
     player.y += player.dy;
-    
-    // Hitbox Config
-    // We make the player hitbox smaller than the visual to be forgiving
-    let hitMargin = 10;
-    let pRect = {
-        l: player.x + hitMargin, 
-        r: player.x + player.w - hitMargin, 
-        t: player.y + hitMargin, 
-        b: player.y + player.h - hitMargin
-    };
-    
-    player.grounded = false;
-    let crash = false;
-    
-    // Screen Bounds
-    if(player.y > SCREEN_H + 100) crash = true;
+    cameraX = player.x - 200;
 
-    // Object Collision
-    for(let obj of mapObjects) {
-        if(obj.x < cameraX - 100 || obj.x > cameraX + SCREEN_W + 100) continue;
-        
-        // Simple AABB
-        if (pRect.r > obj.x && pRect.l < obj.x + obj.w && pRect.b > obj.y && pRect.t < obj.y + obj.h) {
+    let onSomething = false;
+
+    for (let obj of map) {
+        // Only check blocks near the player
+        if (obj.x < player.x - 100 || obj.x > player.x + 100) continue;
+
+        // Check if player is falling into the top of a block
+        if (player.x + player.w > obj.x && 
+            player.x < obj.x + TILE && 
+            player.y + player.h > obj.y && 
+            player.y + player.h < obj.y + 30 && // Only catch the top 30 pixels
+            player.dy >= 0) { 
             
-            if(obj.type === 2) { // Spike
-                crash = true;
-            } 
-            else if (obj.type === 3) player.mode = 'ship';
-            else if (obj.type === 4) { player.mode = 'cube'; player.angle = 0; }
-            else if (obj.type === 1) { // Block
-                
-                // Determine collision side
-                let overlapX = (pRect.r - obj.x) < (obj.x + obj.w - pRect.l) ? -(pRect.r - obj.x) : (obj.x + obj.w - pRect.l);
-                let overlapY = (pRect.b - obj.y) < (obj.y + obj.h - pRect.t) ? -(pRect.b - obj.y) : (obj.y + obj.h - pRect.t);
-
-                if (Math.abs(overlapX) < Math.abs(overlapY)) {
-                    // X Collision (Wall Hit)
-                    if(overlapX < 0 && player.x < obj.x) crash = true; // Hit left side
-                } else {
-                    // Y Collision (Floor/Ceiling)
-                    if(overlapY < 0) { 
-                        // Land on top
-                        player.y += overlapY - hitMargin;
-                        player.dy = 0;
-                        player.grounded = true;
-                        // Auto-align Y to integer to prevent jitter
-                        player.y = Math.floor(player.y);
-                    } else { 
-                        // Hit Head
-                        player.y += overlapY + hitMargin;
-                        player.dy = 0;
-                        if(player.mode === 'cube') crash = true; 
-                    }
-                }
-            }
-        }
-    }
-
-    if(crash) {
-        if(godMode) {
-            // Push player up out of floor if they spawn inside it
-            player.y -= 10; 
+            player.y = obj.y - player.h;
             player.dy = 0;
-        } else {
-            playerDie();
+            onSomething = true;
+        } 
+        // If not landing on top, check if hitting the FRONT of the block
+        else if (player.x + player.w > obj.x + 5 && 
+                 player.x < obj.x + TILE - 5 && 
+                 player.y + player.h > obj.y + 5 && 
+                 player.y < obj.y + TILE - 5) {
+            
+            if (obj.type === "spike") die();
+            else if (obj.type === "block") die();
         }
     }
-    
-    // Trail Logic
-    if(frame % 4 === 0) {
-        player.trail.push({x: player.x, y: player.y, a: player.angle, alpha: 0.6});
-        if(player.trail.length > 10) player.trail.shift();
+
+    player.grounded = onSomething;
+    if (player.grounded) {
+        player.angle = Math.round(player.angle / 90) * 90;
+    } else {
+        player.angle += 7;
     }
-    
-    // Win
-    scorePercent = Math.min(100, Math.floor((player.x / levelEndX) * 100));
-    if(player.x > levelEndX + 200) {
-        gameState = "WIN";
-        document.getElementById('win-screen').classList.remove('hidden');
-        document.getElementById('ui-layer').style.pointerEvents = "auto";
-    }
+
+    if (player.y > canvas.height) die();
 }
 
-function playerDie() {
+function die() {
     gameState = "DEAD";
-    playTone(150, 'sawtooth', 0.5);
-    document.getElementById('percent-display').innerText = scorePercent + "%";
-    document.getElementById('game-over').classList.remove('hidden');
-    document.getElementById('ui-layer').style.pointerEvents = "auto";
+    document.getElementById('death-screen').classList.remove('hidden');
 }
 
-function jump() {
-    if(gameState === "PLAYING" && player.mode === 'cube' && player.grounded) {
-        player.dy = -24; // STRONG JUMP
-        player.grounded = false;
-        playTone(400, 'square', 0.1);
-        
-        // Jump particle
-        // (Simplified for performance)
-    }
+// --- LEVEL SETUP ---
+function startLevel(id) {
+    const levels = [
+        "..........11111111112..11111...2...1111111111",
+        "..........11112221111...1111...1111...1111"
+    ];
+    
+    map = [];
+    // Build a solid floor for the start
+    for(let i=0; i<15; i++) map.push({x: i*TILE, y: canvas.height - TILE, type: "block"});
+    
+    // Build the level
+    levels[id].split('').forEach((char, i) => {
+        let x = (i + 15) * TILE;
+        let y = canvas.height - TILE;
+        map.push({x: x, y: y, type: "block"}); // Floor
+        if(char === "1") map.push({x: x, y: y - TILE, type: "block"});
+        if(char === "2") map.push({x: x, y: y - TILE, type: "spike"});
+    });
+
+    player.x = 100;
+    player.y = canvas.height - 400; // Start HIGH in the air
+    player.dy = 0;
+    gameState = "PLAYING";
+    document.getElementById('main-menu').classList.add('hidden');
+    document.getElementById('death-screen').classList.add('hidden');
 }
+
+function restart() { startLevel(0); }
 
 // --- DRAWING ---
 function draw() {
-    // Background gradient
-    let bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    if(player.mode === 'ship') { bg.addColorStop(0, '#220011'); bg.addColorStop(1, '#110005'); }
-    else { bg.addColorStop(0, '#001133'); bg.addColorStop(1, '#000511'); }
-    ctx.fillStyle = bg;
+    ctx.fillStyle = "#001";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
     ctx.translate(-cameraX, 0);
 
-    // Draw Map
-    let viewStart = cameraX - 100;
-    let viewEnd = cameraX + SCREEN_W + 100;
-    
-    for(let obj of mapObjects) {
-        if(obj.x < viewStart || obj.x > viewEnd) continue;
-        
-        if(obj.type === 1) { // Block
+    for (let obj of map) {
+        if (obj.type === "block") {
             ctx.fillStyle = "#000";
-            ctx.strokeStyle = "#00f0ff";
+            ctx.strokeStyle = "#0ff";
             ctx.lineWidth = 2;
-            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-            ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
-        } else if(obj.type === 2) { // Spike
-            ctx.fillStyle = "#ff2222";
-            ctx.beginPath();
-            ctx.moveTo(obj.x, obj.y + 30);
-            ctx.lineTo(obj.x + 15, obj.y);
-            ctx.lineTo(obj.x + 30, obj.y + 30);
-            ctx.fill();
-            ctx.strokeStyle = "white"; ctx.lineWidth=1; ctx.stroke();
-        } else if(obj.type === 3) { // Portal Ship
-            ctx.fillStyle = "rgba(255, 105, 180, 0.5)";
-            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-            ctx.strokeStyle = "pink"; ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
-        } else if(obj.type === 4) { // Portal Cube
-            ctx.fillStyle = "rgba(50, 255, 50, 0.5)";
-            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-            ctx.strokeStyle = "lime"; ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
-        }
-    }
-
-    // Draw Trail
-    player.trail.forEach(t => {
-        ctx.save();
-        ctx.translate(t.x + player.w/2, t.y + player.h/2);
-        ctx.rotate(t.a * Math.PI / 180);
-        ctx.fillStyle = player.color;
-        ctx.globalAlpha = t.alpha;
-        ctx.fillRect(-player.w/2, -player.h/2, player.w, player.h);
-        ctx.restore();
-        t.alpha -= 0.05;
-    });
-
-    // Draw Player
-    if(gameState === "PLAYING") {
-        ctx.save();
-        ctx.translate(player.x + player.w/2, player.y + player.h/2);
-        ctx.rotate(player.angle * Math.PI / 180);
-        
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = player.color;
-        ctx.fillStyle = player.color;
-        
-        if(player.mode === 'cube') {
-            ctx.fillRect(-20, -20, 40, 40);
-            ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.strokeRect(-20,-20,40,40);
-            ctx.fillStyle = "black";
-            ctx.shadowBlur = 0;
-            ctx.fillRect(5, -5, 10, 10);
-            ctx.fillRect(-10, -5, 5, 5);
+            ctx.fillRect(obj.x, obj.y, TILE, TILE);
+            ctx.strokeRect(obj.x, obj.y, TILE, TILE);
         } else {
-            // Ship
+            ctx.fillStyle = "red";
             ctx.beginPath();
-            ctx.moveTo(25, 0);
-            ctx.lineTo(-15, 15);
-            ctx.lineTo(-15, -15);
+            ctx.moveTo(obj.x, obj.y + TILE);
+            ctx.lineTo(obj.x + TILE/2, obj.y);
+            ctx.lineTo(obj.x + TILE, obj.y + TILE);
             ctx.fill();
-            ctx.strokeStyle = "white"; ctx.stroke();
-            ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
         }
-        ctx.restore();
     }
-    
-    // Floor Line
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(cameraX, SCREEN_H - TILE_SIZE);
-    ctx.lineTo(cameraX + SCREEN_W, SCREEN_H - TILE_SIZE);
-    ctx.stroke();
 
-    ctx.restore();
-
-    if(gameState === "EDITOR") drawEditor();
-}
-
-// --- EDITOR ---
-let editTool = 1;
-let editorData = []; 
-
-function openEditor() {
-    gameState = "EDITOR";
-    document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
-    document.getElementById('editor-ui').classList.remove('hidden');
-    document.getElementById('editor-overlay').classList.remove('hidden');
-    
-    editorData = new Array(300).fill('.');
-    cameraX = -100;
-    loop();
-}
-
-function setEditTool(t) {
-    editTool = t;
-    document.querySelectorAll('.tile-selector').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tile-selector')[t===0?4:t-1].classList.add('active');
-}
-
-function drawEditor() {
     ctx.save();
-    ctx.translate(-cameraX, 0);
-    
-    ctx.strokeStyle = "#333";
-    for(let i=0; i<editorData.length; i++) {
-        let x = i * TILE_SIZE;
-        let y = SCREEN_H - (TILE_SIZE * 2);
-        ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
-        
-        let c = editorData[i];
-        if(c === '1') { ctx.fillStyle="#0ff"; ctx.fillRect(x,y,TILE_SIZE,TILE_SIZE); }
-        if(c === '2') { ctx.fillStyle="#f00"; ctx.beginPath(); ctx.moveTo(x,y+50); ctx.lineTo(x+25,y+20); ctx.lineTo(x+50,y+50); ctx.fill(); }
-        if(c === '3') { ctx.fillStyle="pink"; ctx.fillText("SHIP", x, y+30); }
-        if(c === '4') { ctx.fillStyle="lime"; ctx.fillText("CUBE", x, y+30); }
-    }
-    
-    // Draw Floor Guide
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0, SCREEN_H - TILE_SIZE, editorData.length * TILE_SIZE, TILE_SIZE);
+    ctx.translate(player.x + 20, player.y + 20);
+    ctx.rotate(player.angle * Math.PI / 180);
+    ctx.fillStyle = "#f0f";
+    ctx.fillRect(-20, -20, 40, 40);
+    ctx.strokeStyle = "#fff";
+    ctx.strokeRect(-20, -20, 40, 40);
     ctx.restore();
+
+    ctx.restore();
+    requestAnimationFrame(() => { update(); draw(); });
 }
 
-// Mouse for Editor
-canvas.addEventListener('mousedown', (e) => {
-    if(gameState !== "EDITOR") return;
-    let rect = canvas.getBoundingClientRect();
-    let mx = e.clientX - rect.left + cameraX;
-    let my = e.clientY - rect.top;
-    
-    let idx = Math.floor(mx / TILE_SIZE);
-    if(idx >= 0 && idx < editorData.length && my < SCREEN_H - TILE_SIZE && my > SCREEN_H - (TILE_SIZE*4)) {
-        const chars = ['.', '1', '2', '3', '4'];
-        editorData[idx] = chars[editTool];
-    }
+window.addEventListener('keydown', (e) => { 
+    if (e.code === "Space" && player.grounded) player.dy = -22; 
+});
+window.addEventListener('mousedown', () => { 
+    if (player.grounded) player.dy = -22; 
 });
 
-window.addEventListener('keydown', e => {
-    if(gameState === "EDITOR") {
-        if(e.code === "ArrowRight") cameraX += 30;
-        if(e.code === "ArrowLeft") cameraX -= 30;
-    }
-});
-
-function saveCustomLevel() {
-    let name = prompt("Name your level:", "My Awesome Level");
-    if(!name) return;
-    let str = editorData.join('');
-    let saved = JSON.parse(localStorage.getItem('geoDashLevels') || "[]");
-    saved.push({name: name, data: str});
-    localStorage.setItem('geoDashLevels', JSON.stringify(saved));
-    alert("Saved!");
-    showMenu();
-}
-
-// --- INPUTS ---
-let mouseDown = false;
-window.addEventListener('mousedown', () => { mouseDown = true; jump(); });
-window.addEventListener('mouseup', () => { mouseDown = false; });
-window.addEventListener('keydown', e => { if(e.code==='Space'||e.code==='ArrowUp') { mouseDown = true; jump(); } });
-window.addEventListener('keyup', e => { if(e.code==='Space'||e.code==='ArrowUp') mouseDown = false; });
-
-// --- LOOP ---
-function loop() {
-    if(gameState === "MENU" || gameState === "DEAD") return;
-    requestAnimationFrame(loop);
-    if(gameState === "PLAYING") { update(); draw(); }
-    else if (gameState === "EDITOR") { ctx.clearRect(0,0,canvas.width,canvas.height); drawEditor(); }
-    frame++;
-}
-
-// --- HELPERS ---
-function restartLevel() { 
-    document.getElementById('game-over').classList.add('hidden');
-    startSession(currentLevelData); 
-}
-function showMenu() {
-    gameState = "MENU";
-    document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
-    document.getElementById('editor-ui').classList.add('hidden');
-    document.getElementById('main-menu').classList.remove('hidden');
-    document.getElementById('ui-layer').style.pointerEvents = "auto";
-    renderMenu();
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-}
-function deleteCustom(i) {
-    let saved = JSON.parse(localStorage.getItem('geoDashLevels'));
-    if(confirm("Delete level '" + saved[i].name + "'?")) {
-        saved.splice(i, 1);
-        localStorage.setItem('geoDashLevels', JSON.stringify(saved));
-        renderMenu();
-    }
-}
-
-// Start
-renderMenu();
+draw();
 </script>
 </body>
 </html>
